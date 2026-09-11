@@ -1,0 +1,9 @@
+# Local/editor files
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Local preview/runtime state
+.sites-runtime/
+.tmp/
+node_modules/
