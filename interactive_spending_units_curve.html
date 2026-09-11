@@ -187,10 +187,34 @@
   th:first-child, td:first-child { text-align: left; }
   th { color: var(--muted); font-weight: 700; font-size: 11px; letter-spacing: .02em; }
   .legend { display: flex; gap: 12px 16px; flex-wrap: wrap; margin: 0 2px 12px; color: var(--muted); font-size: 12px; }
-  .legendItem { display: inline-flex; align-items: center; }
+  .legendItem { display: inline-flex; align-items: center; position: relative; }
+  .legendItem[data-tip] { cursor: help; }
+  .legendItem[data-tip]::after {
+    content: attr(data-tip);
+    position: absolute;
+    z-index: 12;
+    left: 0;
+    bottom: calc(100% + 9px);
+    width: 260px;
+    padding: 9px 11px;
+    border: 1px solid #2b3d39;
+    border-radius: 10px;
+    background: #20302b;
+    color: #f8f5ed;
+    box-shadow: 0 14px 26px rgba(24,33,29,.18);
+    font-size: 12px;
+    line-height: 1.35;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 160ms var(--ease-out), transform 160ms var(--ease-out);
+  }
+  .legendItem[data-tip]:hover::after,
+  .legendItem[data-tip]:focus-visible::after { opacity: 1; transform: translateY(0); }
   .swatch { width: 12px; height: 4px; display: inline-block; border-radius: 3px; margin-right: 6px; }
   .swatch.upper { background: var(--accent); }
   .swatch.lower { background: var(--accent); background-image: linear-gradient(90deg, transparent 55%, #fffdf8 55%); background-size: 8px 100%; }
+  .swatch.plan { background: var(--teal); }
   .swatch.point { width: 9px; height: 9px; border-radius: 50%; background: #20302b; margin-left: 2px; margin-right: 7px; }
   .zoneSwatch { width: 10px; height: 10px; border-radius: 3px; display: inline-block; margin-right: 6px; }
   .zoneSwatch.zone1 { background: var(--blue); }
@@ -232,7 +256,7 @@
   <aside class="panel controls">
     <div class="controlGroup">
       <div class="groupLabel">Start with your plan</div>
-      <div class="control" data-tip="Choose whether the chart and unit-based controls use spending units or euros.">
+      <div class="control" data-tip="Choose whether the chart and summary cards use spending units or euros. The target floor and end reserve keep their own fixed units.">
         <label for="viewMode">Show values in</label>
         <select id="viewMode">
           <option value="units">Spending units</option>
@@ -255,8 +279,8 @@
 
       <div class="control" data-tip="Set how many years the plan needs to last. The chart extent will expand to include it.">
         <label for="horizon">Planning horizon (years)</label>
-        <input id="horizonN" type="number" min="1" max="80" step="1" value="42">
-        <input id="horizon" type="range" min="1" max="80" step="1" value="42">
+        <input id="horizonN" type="number" min="5" max="80" step="1" value="42">
+        <input id="horizon" type="range" min="5" max="80" step="1" value="42">
       </div>
     </div>
 
@@ -296,18 +320,18 @@
         <input id="buffer" type="range" min="0" max="150" step="1" value="19">
       </div>
 
-      <div class="control unit-control" id="floorUnitsControl" data-tip="Set the bottom of the target band in annual spending units.">
+      <div class="control unit-control" id="floorUnitsControl" data-tip="Set the bottom of the target band in annual spending units. One spending unit equals one year of current annual spending.">
         <label for="floorUnits"><span id="floorUnitsLabel">Target floor (spending units)</span></label>
         <input id="floorUnitsN" type="number" min="0" max="80" step="1" value="13">
         <input id="floorUnits" type="range" min="0" max="80" step="1" value="13">
       </div>
 
-      <div class="control unit-control" id="legacyUnitsControl" data-tip="Set the amount you want left at the end, measured in annual spending units.">
-        <label for="legacyUnits"><span id="legacyUnitsLabel">End reserve / bequest (spending units)</span></label>
-        <input id="legacyUnitsN" type="number" min="0" max="100" step="1" value="0">
-        <input id="legacyUnits" type="range" min="0" max="100" step="1" value="0">
+      <div class="control unit-control" id="legacyUnitsControl" data-tip="Set the amount you want left at the end, always measured in euros.">
+        <label for="legacyUnits"><span id="legacyUnitsLabel">End reserve / bequest (€)</span></label>
+        <input id="legacyUnitsN" type="number" min="0" max="5000000" step="1000" value="0">
+        <input id="legacyUnits" type="range" min="0" max="5000000" step="1000" value="0">
       </div>
-      <div class="hint">The target floor cannot visually cross the funding estimate; when it meets it, the target band narrows to zero.</div>
+      <div class="hint">The target floor is always in spending units. The end reserve is always in euros.</div>
     </details>
 
     <div class="buttonRow">
@@ -323,7 +347,7 @@
       <div>
         <div class="eyebrow">Live estimate</div>
         <h2>Find the spending line that fits.</h2>
-        <p>Move the assumptions on the left. The red boundary is the estimated funding needed for each planning horizon.</p>
+        <p>Move the assumptions on the left. The red boundary is the estimated funding needed; the teal path projects the balance from your current plan.</p>
       </div>
       <span class="liveBadge">Updates as you move</span>
     </div>
@@ -336,9 +360,10 @@
     <div class="legend">
       <span class="legendItem"><span class="swatch upper"></span>Funding estimate</span>
       <span class="legendItem"><span class="swatch lower"></span>Chosen floor</span>
-      <span class="legendItem"><span class="swatch point"></span>Your plan</span>
+      <span class="legendItem"><span class="swatch point"></span>You are here</span>
+      <span class="legendItem"><span class="swatch plan"></span>Projected balance</span>
       <span class="legendItem"><span class="zoneSwatch zone1"></span>Above estimate</span>
-      <span class="legendItem"><span class="zoneSwatch zone2"></span>Target band</span>
+      <span class="legendItem" tabindex="0" data-tip="The target band sits between your chosen floor and the modeled funding estimate. It is a planning range, not a guarantee."><span class="zoneSwatch zone2"></span>Target band</span>
       <span class="legendItem"><span class="zoneSwatch zone3"></span>Below floor</span>
     </div>
     <canvas id="chart" width="1400" height="760" role="img" aria-label="Interactive spending plan chart showing funding estimates and your current position."></canvas>
@@ -354,25 +379,22 @@
 <script>
 (function() {
   const $ = id => document.getElementById(id);
+  const MIN_YEARS = 5;
   const ids = ['capital','spending','horizon','maxYears','realReturn','returnTax','withdrawTax','buffer','floorUnits','legacyUnits'];
   const unitConfig = {
     floorUnits: {
       max: 80,
       labelId: 'floorUnitsLabel',
       controlId: 'floorUnitsControl',
-      unitsLabel: 'Target floor (spending units)',
-      capitalLabel: 'Target floor (€)',
-      unitsTip: 'Set the bottom of the target band in annual spending units.',
-      capitalTip: 'Set the bottom of the target band in euros. It scales with annual spending.'
+      label: 'Target floor (spending units)',
+      tip: 'Set the bottom of the target band in annual spending units. One spending unit equals one year of current annual spending.'
     },
     legacyUnits: {
-      max: 100,
+      max: 5000000,
       labelId: 'legacyUnitsLabel',
       controlId: 'legacyUnitsControl',
-      unitsLabel: 'End reserve / bequest (spending units)',
-      capitalLabel: 'End reserve / bequest (€)',
-      unitsTip: 'Set the amount you want left at the end, measured in annual spending units.',
-      capitalTip: 'Set the amount you want left at the end in euros. It is stored as an annual-spending multiple.'
+      label: 'End reserve / bequest (€)',
+      tip: 'Set the amount you want left at the end, always measured in euros.'
     }
   };
   const unitState = {
@@ -386,39 +408,30 @@
   const fmtNum = new Intl.NumberFormat('en-IE', { maximumFractionDigits: 1 });
   const fmtPct = new Intl.NumberFormat('en-IE', { maximumFractionDigits: 2 });
 
-  function unitDisplayFactor() {
-    return $('viewMode').value === 'capital' ? Math.max(1, Number($('spending').value) || 1) : 1;
-  }
-
   function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
   }
 
   function syncUnitControls() {
-    const capitalMode = $('viewMode').value === 'capital';
-    const factor = unitDisplayFactor();
     for (const [id, config] of Object.entries(unitConfig)) {
       const range = $(id), number = $(id + 'N');
-      const displayMax = config.max * factor;
-      const displayStep = capitalMode ? Math.max(100, Math.round(factor / 100)) : 1;
-      const displayValue = Math.round(clamp(unitState[id] * factor, 0, displayMax));
-      const tip = capitalMode ? config.capitalTip : config.unitsTip;
+      const displayStep = id === 'legacyUnits' ? 1000 : 1;
+      const displayValue = Math.round(clamp(unitState[id], 0, config.max));
+      const tip = config.tip;
       range.min = number.min = '0';
-      range.max = number.max = String(displayMax);
+      range.max = number.max = String(config.max);
       range.step = number.step = String(displayStep);
       range.value = number.value = String(displayValue);
-      $(config.labelId).textContent = capitalMode ? config.capitalLabel : config.unitsLabel;
+      $(config.labelId).textContent = config.label;
       $(config.controlId).dataset.tip = tip;
       range.title = number.title = tip;
     }
-    $('unitDefinition').textContent = capitalMode
-      ? 'Capital mode: floor and reserve are shown in euros and scale with annual spending.'
-      : '1 spending unit = one year of your current annual spending.';
+    $('unitDefinition').textContent = '1 spending unit = one year of your current annual spending.';
   }
 
   function captureUnitValue(id, displayValue) {
     const config = unitConfig[id];
-    unitState[id] = clamp(Number(displayValue) / unitDisplayFactor(), 0, config.max);
+    unitState[id] = clamp(Number(displayValue), 0, config.max);
   }
 
   function syncPair(id) {
@@ -452,19 +465,19 @@
   }
 
   function syncPlanningCoupling() {
-    const horizon = clamp(Math.round(Number($('horizon').value) || 1), 1, 80);
-    let maxYears = clamp(Math.round(Number($('maxYears').value) || 5), 5, 80);
+    const horizon = clamp(Math.round(Number($('horizon').value) || MIN_YEARS), MIN_YEARS, 80);
+    let maxYears = clamp(Math.round(Number($('maxYears').value) || MIN_YEARS), MIN_YEARS, 80);
     if (maxYears < horizon) maxYears = horizon;
     if (Number($('maxYears').value) !== maxYears) writePair('maxYears', maxYears);
-    $('maxYears').min = $('maxYearsN').min = String(Math.max(5, horizon));
+    $('maxYears').min = $('maxYearsN').min = String(Math.max(MIN_YEARS, horizon));
     $('maxYearsControl')?.setAttribute('data-tip', `Set the longest horizon shown. It cannot be shorter than ${horizon} years.`);
   }
 
   function val(id) { return Number($(id).value); }
   function params() {
     syncPlanningCoupling();
-    const horizon = clamp(Math.round(val('horizon')), 1, 80);
-    const maxYears = Math.max(5, Math.round(val('maxYears')), horizon);
+    const horizon = clamp(Math.round(val('horizon')), MIN_YEARS, 80);
+    const maxYears = Math.max(MIN_YEARS, Math.round(val('maxYears')), horizon);
     return {
       capital: Math.max(0, val('capital')),
       spending: Math.max(1, val('spending')),
@@ -475,7 +488,7 @@
       withdrawTax: Math.min(0.95, val('withdrawTax') / 100),
       buffer: val('buffer') / 100,
       floorUnits: unitState.floorUnits,
-      legacyUnits: unitState.legacyUnits,
+      legacyUnits: unitState.legacyUnits / Math.max(1, val('spending')),
       view: $('viewMode').value
     };
   }
@@ -534,7 +547,7 @@
 
   function computeYMax(p) {
     let maxU = 0;
-    for (let n=1; n<=p.maxYears; n++) maxU = Math.max(maxU, requiredUnits(n, p, true), lowerUnits(n, p));
+    for (let n=MIN_YEARS; n<=p.maxYears; n++) maxU = Math.max(maxU, requiredUnits(n, p, true), lowerUnits(n, p));
     maxU = Math.max(maxU, currentUnits(p) * 1.12, p.floorUnits * 1.2, 5);
     if (p.view === 'capital') maxU *= p.spending;
     return niceStep(maxU * 1.08, 8) * Math.ceil((maxU * 1.08) / niceStep(maxU * 1.08, 8));
@@ -549,8 +562,9 @@
     const plot = { x: pad.l, y: pad.t, w: W-pad.l-pad.r, h: H-pad.t-pad.b };
     const yMax = computeYMax(p);
     const yToValue = v => p.view === 'capital' ? v * p.spending : v;
-    const nToX = n => plot.x + (p.maxYears - n) / (p.maxYears - 1) * plot.w;
-    const xToN = x => p.maxYears - (x - plot.x) / plot.w * (p.maxYears - 1);
+    const yearSpan = Math.max(1, p.maxYears - MIN_YEARS);
+    const nToX = n => plot.x + (p.maxYears - n) / yearSpan * plot.w;
+    const xToN = x => p.maxYears - (x - plot.x) / plot.w * yearSpan;
     const yToPix = y => plot.y + plot.h - (y / yMax) * plot.h;
     const pixToY = y => (plot.y + plot.h - y) / plot.h * yMax;
 
@@ -592,13 +606,13 @@
     const xStep = p.maxYears <= 45 ? 2 : 5;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    for (let n=1; n<=p.maxYears; n += xStep) {
+    for (let n=MIN_YEARS; n<=p.maxYears; n += xStep) {
       const x = nToX(n);
       ctx.strokeStyle = 'rgba(29,40,37,.12)';
       ctx.beginPath(); ctx.moveTo(x, plot.y); ctx.lineTo(x, plot.y + plot.h); ctx.stroke();
       ctx.fillText(String(n), x, plot.y + plot.h + 8);
     }
-    if ((p.maxYears - 1) % xStep !== 0) {
+    if ((p.maxYears - MIN_YEARS) % xStep !== 0) {
       const x = nToX(p.maxYears);
       ctx.fillText(String(p.maxYears), x, plot.y + plot.h + 8);
     }
@@ -607,6 +621,7 @@
     // Curves
     drawCurve(n => yToValue(requiredUnits(n, p, true)), '#d95d47', 4, false, nToX, yToPix, p.maxYears);
     drawCurve(n => yToValue(lowerUnits(n, p)), '#d95d47', 3, true, nToX, yToPix, p.maxYears);
+    drawPlanCurve(p, nToX, yToPix, yToValue);
 
     // Current point / line
     const curY = p.view === 'capital' ? p.capital : currentUnits(p);
@@ -658,10 +673,40 @@
     if (dashed) ctx.setLineDash([8,6]);
     ctx.beginPath();
     for (let i=0; i<=600; i++) {
-      const n = maxYears - i/600*(maxYears-1);
+      const n = maxYears - i/600*(maxYears-MIN_YEARS);
       const x = nToX(n);
       const y = yToPix(fn(n));
       if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function planBalanceUnits(remainingYears, p) {
+    const elapsed = Math.max(0, Math.round(p.horizon - remainingYears));
+    const r = effectiveR(p);
+    const withdrawal = 1 / Math.max(0.05, 1 - p.withdrawTax);
+    let balance = currentUnits(p);
+    for (let i = 0; i < elapsed; i++) {
+      balance = Math.max(0, balance * (1 + r) - withdrawal);
+    }
+    return balance;
+  }
+
+  function drawPlanCurve(p, nToX, yToPix, yToValue) {
+    if (p.horizon < 1) return;
+    ctx.save();
+    ctx.strokeStyle = '#276c63';
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    const steps = Math.max(1, Math.round((p.horizon - MIN_YEARS) * 8));
+    for (let i = 0; i <= steps; i++) {
+      const n = p.horizon - i / steps * (p.horizon - MIN_YEARS);
+      const x = nToX(n);
+      const y = yToPix(yToValue(planBalanceUnits(n, p)));
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
     }
     ctx.stroke();
     ctx.restore();
@@ -696,7 +741,7 @@
   function updateTable() {
     const p = params();
     const tbody = $('scenarioTable').querySelector('tbody');
-    const years = Array.from(new Set([1, Math.max(1, Math.round(p.horizon/2)), p.horizon, Math.min(p.maxYears, p.horizon+10), p.maxYears])).sort((a,b)=>b-a);
+    const years = Array.from(new Set([MIN_YEARS, Math.max(MIN_YEARS, Math.round(p.horizon/2)), p.horizon, Math.min(p.maxYears, p.horizon+10), p.maxYears])).sort((a,b)=>b-a);
     tbody.innerHTML = '';
     for (const n of years) {
       const req = requiredUnits(n, p, true);
@@ -735,7 +780,7 @@
     realReturn:1.5, returnTax:15, withdrawTax:0, buffer:30, floorUnits:15, legacyUnits:0
   }));
   $('growthDefaults').addEventListener('click', () => setVals({
-    realReturn:3.5, returnTax:15, withdrawTax:0, buffer:20, floorUnits:10, legacyUnits:5
+    realReturn:3.5, returnTax:15, withdrawTax:0, buffer:20, floorUnits:10, legacyUnits:100000
   }));
 
   canvas.addEventListener('mousemove', e => {
@@ -755,7 +800,7 @@
     const yUnits = d.p.view === 'capital' ? yVal / d.p.spending : yVal;
     const z = zoneFor(yUnits, n, d.p);
 
-    const boxW = 310, boxH = 108;
+    const boxW = 320, boxH = 128;
     let bx = Math.min(x + 16, canvas.width - boxW - 8);
     let by = Math.max(8, y - boxH - 12);
     ctx.save();
@@ -771,7 +816,9 @@
     ctx.fillStyle = '#aab3c2';
     ctx.fillText(`Upper: ${fmtNum.format(upper)}× = ${fmtEur.format(upper*d.p.spending)}`, bx+12, by+48);
     ctx.fillText(`Lower: ${fmtNum.format(lower)}× = ${fmtEur.format(lower*d.p.spending)}`, bx+12, by+70);
-    ctx.fillText(`Max net spend: ${fmtEur.format(d.p.capital/Math.max(0.0001, upper))}/yr`, bx+12, by+92);
+    const projected = planBalanceUnits(n, d.p);
+    ctx.fillText(`Plan path: ${fmtNum.format(projected)}× = ${fmtEur.format(projected*d.p.spending)}`, bx+12, by+92);
+    ctx.fillText(`Max net spend: ${fmtEur.format(d.p.capital/Math.max(0.0001, upper))}/yr`, bx+12, by+114);
     ctx.restore();
   });
   canvas.addEventListener('mouseleave', update);
