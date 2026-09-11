@@ -1,0 +1,831 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>How Much Can I Safely Spend?</title>
+<style>
+  :root {
+    --bg: #f3f2ec;
+    --panel: #fffdf8;
+    --panel-soft: #f8f7f1;
+    --text: #1d2825;
+    --muted: #68736f;
+    --line: #d9d8d0;
+    --accent: #d95d47;
+    --accent-dark: #a84235;
+    --teal: #276c63;
+    --blue: rgba(73, 116, 168, 0.78);
+    --green: rgba(143, 171, 136, 0.78);
+    --yellow: rgba(226, 209, 96, 0.76);
+    --shadow: rgba(42, 48, 44, .10);
+    --ease-out: cubic-bezier(.23, 1, .32, 1);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    background-image: radial-gradient(circle at 78% -12%, rgba(255,255,255,.92), transparent 38rem);
+  }
+  header {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 42px 34px 26px;
+  }
+  .eyebrow, .groupLabel {
+    color: var(--accent-dark);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+  }
+  h1 { margin: 7px 0 8px; font-size: clamp(30px, 4vw, 48px); line-height: 1.02; letter-spacing: -0.045em; }
+  header p { margin: 0; color: var(--muted); max-width: 620px; line-height: 1.55; font-size: 15px; }
+  .wrap {
+    display: grid;
+    grid-template-columns: 360px minmax(640px, 1fr);
+    gap: 24px;
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 0 34px 48px;
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    box-shadow: 0 18px 48px var(--shadow);
+  }
+  .controls { padding: 22px; align-self: start; }
+  .chartPanel { padding: 22px 22px 26px; min-width: 0; }
+  .controlGroup + .controlGroup, .assumptions, .buttonRow { margin-top: 24px; }
+  .groupLabel { margin-bottom: 12px; color: var(--muted); letter-spacing: .1em; }
+  .assumptions {
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    padding: 14px 0;
+  }
+  .assumptions summary {
+    cursor: pointer;
+    list-style: none;
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 750;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .assumptions summary::-webkit-details-marker { display: none; }
+  .assumptions summary::after { content: '+'; color: var(--muted); font-size: 18px; line-height: 12px; }
+  .assumptions[open] summary::after { content: '−'; }
+  .assumptions summary span { color: var(--muted); font-weight: 500; margin-left: auto; }
+  .assumptions .control:first-of-type { margin-top: 18px; }
+  .control {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr 112px;
+    gap: 9px 12px;
+    align-items: center;
+    margin: 15px 0 18px;
+  }
+  label { font-size: 13px; color: var(--text); line-height: 1.25; }
+  input[type="range"] { width: 100%; grid-column: 1 / -1; appearance: none; height: 22px; background: transparent; cursor: ew-resize; }
+  input[type="range"]::-webkit-slider-runnable-track { height: 4px; border-radius: 999px; background: linear-gradient(90deg, rgba(217,93,71,.35), rgba(39,108,99,.2)); }
+  input[type="range"]::-webkit-slider-thumb { appearance: none; width: 17px; height: 17px; margin-top: -6.5px; border: 3px solid var(--panel); border-radius: 50%; background: var(--accent); box-shadow: 0 1px 0 rgba(0,0,0,.2), 0 0 0 1px var(--accent); transition: transform 160ms var(--ease-out); }
+  input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.14); }
+  input[type="range"]::-moz-range-track { height: 4px; border-radius: 999px; background: linear-gradient(90deg, rgba(217,93,71,.35), rgba(39,108,99,.2)); }
+  input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border: 3px solid var(--panel); border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  input[type="number"], select {
+    width: 100%;
+    padding: 8px 9px;
+    border-radius: 9px;
+    border: 1px solid var(--line);
+    background: var(--panel-soft);
+    color: var(--text);
+    font-size: 13px;
+    transition: border-color 160ms ease, box-shadow 160ms ease;
+  }
+  input[type="number"]:focus, select:focus, input[type="range"]:focus-visible, button:focus-visible, summary:focus-visible {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(217,93,71,.16);
+  }
+  .control[data-tip]::after {
+    content: attr(data-tip);
+    position: absolute;
+    z-index: 10;
+    left: calc(100% + 12px);
+    top: 50%;
+    width: min(280px, 28vw);
+    padding: 10px 12px;
+    border: 1px solid #2b3d39;
+    border-radius: 11px;
+    background: #20302b;
+    color: #f8f5ed;
+    box-shadow: 0 14px 26px rgba(24,33,29,.18);
+    font-size: 12px;
+    line-height: 1.35;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(-50%) translateX(-4px);
+    transition: opacity 160ms var(--ease-out), transform 160ms var(--ease-out);
+  }
+  .control[data-tip]:hover::after,
+  .control[data-tip]:focus-within::after {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+  .hint { color: var(--muted); font-size: 12px; line-height: 1.4; margin-top: -9px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .buttonRow { display: flex; gap: 8px; flex-wrap: wrap; }
+  button {
+    border: 1px solid var(--line);
+    color: var(--text);
+    background: var(--panel-soft);
+    border-radius: 9px;
+    padding: 8px 10px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: transform 160ms var(--ease-out), border-color 160ms ease, background 160ms ease;
+  }
+  button:hover { border-color: #a8aaa0; background: #f0eee7; }
+  button:active { transform: scale(.97); }
+  button:first-child { color: var(--accent-dark); }
+  .constraintNote { margin-top: 12px; color: var(--muted); font-size: 11px; line-height: 1.4; }
+  .chartHeader { display: flex; justify-content: space-between; align-items: start; gap: 18px; margin: 1px 2px 18px; }
+  .chartHeader h2 { margin: 5px 0 5px; font-size: 21px; letter-spacing: -.025em; }
+  .chartHeader p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.45; max-width: 640px; }
+  .liveBadge { flex: none; border: 1px solid #b9d7cc; color: var(--teal); background: #eff8f3; border-radius: 999px; padding: 7px 10px; font-size: 11px; font-weight: 750; white-space: nowrap; }
+  .readouts {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(120px, 1fr));
+    gap: 9px;
+    margin: 0 0 16px;
+  }
+  .card {
+    background: var(--panel-soft);
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    padding: 12px 13px;
+    min-height: 80px;
+  }
+  .card:first-child { background: #20302b; border-color: #20302b; color: #f8f5ed; }
+  .card:first-child .k, .card:first-child .s { color: #c9d8d0; }
+  .card:first-child .v { color: #fffdf8; }
+  .card .k { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .02em; }
+  .card .v { font-size: 20px; margin-top: 5px; font-weight: 800; letter-spacing: -.025em; }
+  .card .s { color: var(--muted); font-size: 11px; margin-top: 4px; line-height: 1.3; }
+  .zonePill { display: inline-block; padding: 3px 8px; border-radius: 999px; font-size: 12px; font-weight: 800; }
+  .zone1 { background: rgba(73,116,168,.16); color: #285685; border: 1px solid rgba(73,116,168,.28); }
+  .zone2 { background: rgba(143,171,136,.22); color: #42613d; border: 1px solid rgba(66,97,61,.22); }
+  .zone3 { background: rgba(226,209,96,.24); color: #706713; border: 1px solid rgba(112,103,19,.2); }
+  canvas { width: 100%; height: auto; aspect-ratio: 1400 / 760; display: block; background: #fbfaf6; border: 1px solid #dfddd3; border-radius: 14px; }
+  .tableWrap { overflow-x: auto; }
+  table { width: 100%; min-width: 640px; border-collapse: collapse; margin-top: 12px; font-size: 12px; }
+  th, td { border-bottom: 1px solid #e5e3da; padding: 9px 7px; text-align: right; white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--muted); font-weight: 700; font-size: 11px; letter-spacing: .02em; }
+  .legend { display: flex; gap: 12px 16px; flex-wrap: wrap; margin: 0 2px 12px; color: var(--muted); font-size: 12px; }
+  .legendItem { display: inline-flex; align-items: center; position: relative; }
+  .legendItem[data-tip] { cursor: help; }
+  .legendItem[data-tip]::after {
+    content: attr(data-tip);
+    position: absolute;
+    z-index: 12;
+    left: 0;
+    bottom: calc(100% + 9px);
+    width: 260px;
+    padding: 9px 11px;
+    border: 1px solid #2b3d39;
+    border-radius: 10px;
+    background: #20302b;
+    color: #f8f5ed;
+    box-shadow: 0 14px 26px rgba(24,33,29,.18);
+    font-size: 12px;
+    line-height: 1.35;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 160ms var(--ease-out), transform 160ms var(--ease-out);
+  }
+  .legendItem[data-tip]:hover::after,
+  .legendItem[data-tip]:focus-visible::after { opacity: 1; transform: translateY(0); }
+  .swatch { width: 12px; height: 4px; display: inline-block; border-radius: 3px; margin-right: 6px; }
+  .swatch.upper { background: var(--accent); }
+  .swatch.lower { background: var(--accent); background-image: linear-gradient(90deg, transparent 55%, #fffdf8 55%); background-size: 8px 100%; }
+  .swatch.plan { background: var(--teal); }
+  .swatch.point { width: 9px; height: 9px; border-radius: 50%; background: #20302b; margin-left: 2px; margin-right: 7px; }
+  .zoneSwatch { width: 10px; height: 10px; border-radius: 3px; display: inline-block; margin-right: 6px; }
+  .zoneSwatch.zone1 { background: var(--blue); }
+  .zoneSwatch.zone2 { background: var(--green); }
+  .zoneSwatch.zone3 { background: var(--yellow); }
+  @media (max-width: 1080px) {
+    .wrap { grid-template-columns: 1fr; }
+    .control[data-tip]::after {
+      left: 0;
+      top: calc(100% + 8px);
+      width: min(300px, calc(100vw - 68px));
+      transform: translateY(-4px);
+    }
+    .control[data-tip]:hover::after,
+    .control[data-tip]:focus-within::after { transform: translateY(0); }
+  }
+  @media (max-width: 680px) {
+    header { padding: 30px 18px 22px; }
+    .wrap { padding: 0 18px 30px; }
+    .controls, .chartPanel { padding: 17px; }
+    .chartHeader { display: block; }
+    .liveBadge { display: inline-block; margin-top: 12px; }
+    .readouts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .card .v { font-size: 18px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition-duration: 0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">Personal spending plan</div>
+  <h1>How much can I safely spend?</h1>
+  <p>Explore annual spending from your savings over a chosen number of years. Estimates use a constant return after inflation.</p>
+</header>
+
+<div class="wrap">
+  <aside class="panel controls">
+    <div class="controlGroup">
+      <div class="groupLabel">Start with your plan</div>
+      <div class="control" data-tip="Choose whether the chart and summary cards use spending units or euros. The target floor and end reserve keep their own fixed units.">
+        <label for="viewMode">Show values in</label>
+        <select id="viewMode">
+          <option value="units">Spending units</option>
+          <option value="capital">Capital (€)</option>
+        </select>
+      </div>
+      <div class="hint" id="unitDefinition">1 spending unit = one year of your current annual spending.</div>
+
+      <div class="control" data-tip="Set the savings you have available today.">
+        <label for="capital">Current capital (€)</label>
+        <input id="capitalN" type="number" min="0" step="10000" value="1000000">
+        <input id="capital" type="range" min="0" max="5000000" step="10000" value="1000000">
+      </div>
+
+      <div class="control" data-tip="Set the yearly after-tax spending you want to support, in today’s money.">
+        <label for="spending">Annual spending (€)</label>
+        <input id="spendingN" type="number" min="1000" step="1000" value="20000">
+        <input id="spending" type="range" min="1000" max="250000" step="1000" value="20000">
+      </div>
+
+      <div class="control" data-tip="Set how many years the plan needs to last. The chart extent will expand to include it.">
+        <label for="horizon">Planning horizon (years)</label>
+        <input id="horizonN" type="number" min="5" max="80" step="1" value="42">
+        <input id="horizon" type="range" min="5" max="80" step="1" value="42">
+      </div>
+    </div>
+
+    <div class="controlGroup">
+      <div class="groupLabel">Return & chart</div>
+      <div class="control" data-tip="Set the expected return after inflation. Use real return, not nominal return.">
+        <label for="realReturn">Expected real return (%)</label>
+        <input id="realReturnN" type="number" min="-5" max="12" step="0.1" value="0.0">
+        <input id="realReturn" type="range" min="-5" max="12" step="0.1" value="0.0">
+      </div>
+      <div class="hint">Example: 5% nominal return − 2.5% inflation ≈ 2.5% real.</div>
+
+      <div class="control" id="maxYearsControl" data-tip="Set the longest horizon shown. It cannot be shorter than your planning horizon.">
+        <label for="maxYears">Chart extent (years)</label>
+        <input id="maxYearsN" type="number" min="5" max="80" step="1" value="42">
+        <input id="maxYears" type="range" min="5" max="80" step="1" value="42">
+      </div>
+    </div>
+
+    <details class="assumptions" open>
+      <summary>More assumptions <span>tax, buffer, floor, reserve</span></summary>
+      <div class="control" data-tip="Estimate the share of positive returns lost to tax. Negative returns are not made less negative by this setting.">
+        <label for="returnTax">Tax drag on returns (%)</label>
+        <input id="returnTaxN" type="number" min="0" max="80" step="1" value="0">
+        <input id="returnTax" type="range" min="0" max="80" step="1" value="0">
+      </div>
+
+      <div class="control" data-tip="Estimate the tax paid when money is withdrawn for spending.">
+        <label for="withdrawTax">Tax on withdrawals (%)</label>
+        <input id="withdrawTaxN" type="number" min="0" max="80" step="1" value="0">
+        <input id="withdrawTax" type="range" min="0" max="80" step="1" value="0">
+      </div>
+
+      <div class="control" data-tip="Add a cushion above the mathematical minimum funding estimate.">
+        <label for="buffer">Safety buffer (%)</label>
+        <input id="bufferN" type="number" min="0" max="150" step="1" value="19">
+        <input id="buffer" type="range" min="0" max="150" step="1" value="19">
+      </div>
+
+      <div class="control unit-control" id="floorUnitsControl" data-tip="Set the bottom of the target band in annual spending units. One spending unit equals one year of current annual spending.">
+        <label for="floorUnits"><span id="floorUnitsLabel">Target floor (spending units)</span></label>
+        <input id="floorUnitsN" type="number" min="0" max="80" step="1" value="13">
+        <input id="floorUnits" type="range" min="0" max="80" step="1" value="13">
+      </div>
+
+      <div class="control unit-control" id="legacyUnitsControl" data-tip="Set the amount you want left at the end, always measured in euros.">
+        <label for="legacyUnits"><span id="legacyUnitsLabel">End reserve / bequest (€)</span></label>
+        <input id="legacyUnitsN" type="number" min="0" max="5000000" step="1000" value="0">
+        <input id="legacyUnits" type="range" min="0" max="5000000" step="1000" value="0">
+      </div>
+      <div class="hint">The target floor is always in spending units. The end reserve is always in euros.</div>
+    </details>
+
+    <div class="buttonRow">
+      <button id="imageDefaults">Reset example</button>
+      <button id="conservativeDefaults">Cautious example</button>
+      <button id="growthDefaults">Growth example</button>
+    </div>
+    <div class="constraintNote" id="constraintNote">Linked controls update together: the chart extent always includes the planning horizon.</div>
+</aside>
+
+  <main class="panel chartPanel">
+    <div class="chartHeader">
+      <div>
+        <div class="eyebrow">Live estimate</div>
+        <h2>Find the spending line that fits.</h2>
+        <p>Move the assumptions on the left. The red boundary is the estimated funding needed; the teal path projects the balance from your current plan.</p>
+      </div>
+      <span class="liveBadge">Updates as you move</span>
+    </div>
+    <div class="readouts">
+      <div class="card"><div class="k" id="currentValueLabel">Current spending units</div><div class="v" id="unitsOut">—</div><div class="s" id="currentValueExplain">capital ÷ annual spending</div></div>
+      <div class="card"><div class="k">Zone at selected horizon</div><div class="v" id="zoneOut">—</div><div class="s" id="zoneExplain">—</div></div>
+      <div class="card"><div class="k">Capital needed today</div><div class="v" id="neededOut">—</div><div class="s" id="neededUnitsOut">—</div></div>
+      <div class="card"><div class="k">Estimated annual spending</div><div class="v" id="safeSpendOut">—</div><div class="s" id="effReturnOut">—</div></div>
+    </div>
+    <div class="legend">
+      <span class="legendItem"><span class="swatch upper"></span>Funding estimate</span>
+      <span class="legendItem"><span class="swatch lower"></span>Chosen floor</span>
+      <span class="legendItem"><span class="swatch point"></span>You are here</span>
+      <span class="legendItem"><span class="swatch plan"></span>Projected balance</span>
+      <span class="legendItem"><span class="zoneSwatch zone1"></span>Above estimate</span>
+      <span class="legendItem" tabindex="0" data-tip="The target band sits between your chosen floor and the modeled funding estimate. It is a planning range, not a guarantee."><span class="zoneSwatch zone2"></span>Target band</span>
+      <span class="legendItem"><span class="zoneSwatch zone3"></span>Below floor</span>
+    </div>
+    <canvas id="chart" width="1400" height="760" role="img" aria-label="Interactive spending plan chart showing funding estimates and your current position."></canvas>
+    <div class="tableWrap">
+      <table id="scenarioTable">
+        <thead><tr><th>Horizon</th><th>Required units</th><th>Required capital</th><th>Estimated annual spend</th><th>Zone</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<script>
+(function() {
+  const $ = id => document.getElementById(id);
+  const MIN_YEARS = 5;
+  const ids = ['capital','spending','horizon','maxYears','realReturn','returnTax','withdrawTax','buffer','floorUnits','legacyUnits'];
+  const unitConfig = {
+    floorUnits: {
+      max: 80,
+      labelId: 'floorUnitsLabel',
+      controlId: 'floorUnitsControl',
+      label: 'Target floor (spending units)',
+      tip: 'Set the bottom of the target band in annual spending units. One spending unit equals one year of current annual spending.'
+    },
+    legacyUnits: {
+      max: 5000000,
+      labelId: 'legacyUnitsLabel',
+      controlId: 'legacyUnitsControl',
+      label: 'End reserve / bequest (€)',
+      tip: 'Set the amount you want left at the end, always measured in euros.'
+    }
+  };
+  const unitState = {
+    floorUnits: Number($('floorUnits').value),
+    legacyUnits: Number($('legacyUnits').value)
+  };
+  const canvas = $('chart');
+  const ctx = canvas.getContext('2d');
+
+  const fmtEur = new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+  const fmtNum = new Intl.NumberFormat('en-IE', { maximumFractionDigits: 1 });
+  const fmtPct = new Intl.NumberFormat('en-IE', { maximumFractionDigits: 2 });
+
+  function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+  }
+
+  function syncUnitControls() {
+    for (const [id, config] of Object.entries(unitConfig)) {
+      const range = $(id), number = $(id + 'N');
+      const displayStep = id === 'legacyUnits' ? 1000 : 1;
+      const displayValue = Math.round(clamp(unitState[id], 0, config.max));
+      const tip = config.tip;
+      range.min = number.min = '0';
+      range.max = number.max = String(config.max);
+      range.step = number.step = String(displayStep);
+      range.value = number.value = String(displayValue);
+      $(config.labelId).textContent = config.label;
+      $(config.controlId).dataset.tip = tip;
+      range.title = number.title = tip;
+    }
+    $('unitDefinition').textContent = '1 spending unit = one year of your current annual spending.';
+  }
+
+  function captureUnitValue(id, displayValue) {
+    const config = unitConfig[id];
+    unitState[id] = clamp(Number(displayValue), 0, config.max);
+  }
+
+  function syncPair(id) {
+    const r = $(id), n = $(id + 'N');
+    const commit = value => {
+      if (unitConfig[id]) captureUnitValue(id, value);
+      update();
+    };
+    r.addEventListener('input', () => { n.value = r.value; commit(r.value); });
+    const commitNumber = () => {
+      if (n.value.trim() === '') return;
+      let v = Number(n.value);
+      if (!Number.isFinite(v)) return;
+      v = Math.max(Number(r.min), Math.min(Number(r.max), v));
+      n.value = v;
+      r.value = v;
+      commit(v);
+    };
+    n.addEventListener('change', commitNumber);
+    n.addEventListener('blur', commitNumber);
+    n.addEventListener('keydown', event => {
+      if (event.key === 'Enter') { event.preventDefault(); commitNumber(); n.blur(); }
+    });
+  }
+  ids.forEach(syncPair);
+  $('viewMode').addEventListener('change', update);
+
+  function writePair(id, value) {
+    $(id).value = value;
+    $(id + 'N').value = value;
+  }
+
+  function syncPlanningCoupling() {
+    const horizon = clamp(Math.round(Number($('horizon').value) || MIN_YEARS), MIN_YEARS, 80);
+    let maxYears = clamp(Math.round(Number($('maxYears').value) || MIN_YEARS), MIN_YEARS, 80);
+    if (maxYears < horizon) maxYears = horizon;
+    if (Number($('maxYears').value) !== maxYears) writePair('maxYears', maxYears);
+    $('maxYears').min = $('maxYearsN').min = String(Math.max(MIN_YEARS, horizon));
+    $('maxYearsControl')?.setAttribute('data-tip', `Set the longest horizon shown. It cannot be shorter than ${horizon} years.`);
+  }
+
+  function val(id) { return Number($(id).value); }
+  function params() {
+    syncPlanningCoupling();
+    const horizon = clamp(Math.round(val('horizon')), MIN_YEARS, 80);
+    const maxYears = Math.max(MIN_YEARS, Math.round(val('maxYears')), horizon);
+    return {
+      capital: Math.max(0, val('capital')),
+      spending: Math.max(1, val('spending')),
+      horizon,
+      maxYears,
+      rGross: val('realReturn') / 100,
+      returnTax: val('returnTax') / 100,
+      withdrawTax: Math.min(0.95, val('withdrawTax') / 100),
+      buffer: val('buffer') / 100,
+      floorUnits: unitState.floorUnits,
+      legacyUnits: unitState.legacyUnits / Math.max(1, val('spending')),
+      view: $('viewMode').value
+    };
+  }
+
+  function effectiveR(p) { return p.rGross >= 0 ? p.rGross * (1 - p.returnTax) : p.rGross; }
+
+  function annuityPV(n, r) {
+    if (Math.abs(r) < 1e-9) return n;
+    const denom = r;
+    const num = 1 - Math.pow(1 + r, -n);
+    return num / denom;
+  }
+
+  function requiredUnits(n, p, withBuffer=true) {
+    const r = effectiveR(p);
+    const grossUp = 1 / Math.max(0.05, 1 - p.withdrawTax);
+    let pv = annuityPV(n, r) * grossUp;
+    let legacyPV = p.legacyUnits / Math.pow(1 + r, n);
+    if (!Number.isFinite(legacyPV)) legacyPV = p.legacyUnits;
+    let req = pv + Math.max(0, legacyPV);
+    if (withBuffer) req *= (1 + p.buffer);
+    return Math.max(0, req);
+  }
+
+  function lowerUnits(n, p) { return Math.min(Math.max(0, p.floorUnits), requiredUnits(n, p, true)); }
+  function currentUnits(p) { return p.capital / p.spending; }
+  function zoneFor(yUnits, n, p) {
+    const up = requiredUnits(n, p, true);
+    const lo = lowerUnits(n, p);
+    if (yUnits > up) return 1;
+    if (yUnits <= lo) return 3;
+    return 2;
+  }
+  function zoneText(z) {
+    return z === 1 ? 'Zone 1' : z === 2 ? 'Zone 2' : 'Zone 3';
+  }
+  function zoneClass(z) { return z === 1 ? 'zone1' : z === 2 ? 'zone2' : 'zone3'; }
+  function zoneMeaning(z) {
+    if (z === 1) return 'above the funding estimate';
+    if (z === 2) return 'inside the target band';
+    return 'below the chosen floor';
+  }
+
+  function niceStep(maxVal, targetTicks) {
+    if (maxVal <= 0) return 1;
+    const rough = maxVal / targetTicks;
+    const pow = Math.pow(10, Math.floor(Math.log10(rough)));
+    const scaled = rough / pow;
+    let nice;
+    if (scaled <= 1) nice = 1;
+    else if (scaled <= 2) nice = 2;
+    else if (scaled <= 5) nice = 5;
+    else nice = 10;
+    return nice * pow;
+  }
+
+  function computeYMax(p) {
+    let maxU = 0;
+    for (let n=MIN_YEARS; n<=p.maxYears; n++) maxU = Math.max(maxU, requiredUnits(n, p, true), lowerUnits(n, p));
+    maxU = Math.max(maxU, currentUnits(p) * 1.12, p.floorUnits * 1.2, 5);
+    if (p.view === 'capital') maxU *= p.spending;
+    return niceStep(maxU * 1.08, 8) * Math.ceil((maxU * 1.08) / niceStep(maxU * 1.08, 8));
+  }
+
+  function draw() {
+    const p = params();
+    const W = canvas.width, H = canvas.height;
+    ctx.clearRect(0,0,W,H);
+
+    const pad = { l: 92, r: 28, t: 56, b: 74 };
+    const plot = { x: pad.l, y: pad.t, w: W-pad.l-pad.r, h: H-pad.t-pad.b };
+    const yMax = computeYMax(p);
+    const yToValue = v => p.view === 'capital' ? v * p.spending : v;
+    const yearSpan = Math.max(1, p.maxYears - MIN_YEARS);
+    const nToX = n => plot.x + (p.maxYears - n) / yearSpan * plot.w;
+    const xToN = x => p.maxYears - (x - plot.x) / plot.w * yearSpan;
+    const yToPix = y => plot.y + plot.h - (y / yMax) * plot.h;
+    const pixToY = y => (plot.y + plot.h - y) / plot.h * yMax;
+
+    // Zones by vertical strips
+    for (let px = Math.floor(plot.x); px <= plot.x + plot.w; px++) {
+      const n = Math.max(1, Math.min(p.maxYears, xToN(px)));
+      const up = yToValue(requiredUnits(n, p, true));
+      const lo = yToValue(lowerUnits(n, p));
+      const yUp = Math.max(plot.y, Math.min(plot.y + plot.h, yToPix(up)));
+      const yLo = Math.max(plot.y, Math.min(plot.y + plot.h, yToPix(lo)));
+      ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--blue');
+      ctx.fillRect(px, plot.y, 1, Math.max(0, yUp - plot.y));
+      ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--green');
+      ctx.fillRect(px, yUp, 1, Math.max(0, yLo - yUp));
+      ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--yellow');
+      ctx.fillRect(px, yLo, 1, Math.max(0, plot.y + plot.h - yLo));
+    }
+
+    // Plot background border
+    ctx.strokeStyle = '#9fa9a2';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(plot.x, plot.y, plot.w, plot.h);
+
+    // Grid and y labels
+    ctx.save();
+    ctx.font = '16px system-ui, -apple-system, Segoe UI, sans-serif';
+    ctx.fillStyle = '#1d2825';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    const yStep = niceStep(yMax, 10);
+    for (let y=0; y<=yMax + 1e-6; y += yStep) {
+      const py = yToPix(y);
+      ctx.strokeStyle = 'rgba(29,40,37,.16)';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(plot.x, py); ctx.lineTo(plot.x + plot.w, py); ctx.stroke();
+      ctx.fillText(p.view === 'capital' ? compactEur(y) : fmtNum.format(y), plot.x - 8, py);
+    }
+    // x grid labels, descending like source image
+    const xStep = p.maxYears <= 45 ? 2 : 5;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    for (let n=MIN_YEARS; n<=p.maxYears; n += xStep) {
+      const x = nToX(n);
+      ctx.strokeStyle = 'rgba(29,40,37,.12)';
+      ctx.beginPath(); ctx.moveTo(x, plot.y); ctx.lineTo(x, plot.y + plot.h); ctx.stroke();
+      ctx.fillText(String(n), x, plot.y + plot.h + 8);
+    }
+    if ((p.maxYears - MIN_YEARS) % xStep !== 0) {
+      const x = nToX(p.maxYears);
+      ctx.fillText(String(p.maxYears), x, plot.y + plot.h + 8);
+    }
+    ctx.restore();
+
+    // Curves
+    drawCurve(n => yToValue(requiredUnits(n, p, true)), '#d95d47', 4, false, nToX, yToPix, p.maxYears);
+    drawCurve(n => yToValue(lowerUnits(n, p)), '#d95d47', 3, true, nToX, yToPix, p.maxYears);
+    drawPlanCurve(p, nToX, yToPix, yToValue);
+
+    // Current point / line
+    const curY = p.view === 'capital' ? p.capital : currentUnits(p);
+    const curX = nToX(p.horizon);
+    const curPy = yToPix(curY);
+    ctx.save();
+    ctx.setLineDash([9, 7]);
+    ctx.strokeStyle = 'rgba(29,40,37,.62)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(curX, plot.y); ctx.lineTo(curX, plot.y + plot.h); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(plot.x, curPy); ctx.lineTo(plot.x + plot.w, curPy); ctx.stroke();
+    ctx.restore();
+
+    ctx.fillStyle = '#fff';
+    ctx.strokeStyle = '#20302b';
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(curX, curPy, 8, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#20302b';
+    ctx.font = 'bold 14px system-ui, -apple-system, Segoe UI, sans-serif';
+    ctx.textAlign = curX > plot.x + plot.w - 170 ? 'right' : 'left';
+    ctx.fillText('You are here', curX + (ctx.textAlign === 'right' ? -12 : 12), curPy - 12);
+
+    // Titles
+    ctx.fillStyle = '#1d2825';
+    ctx.font = 'bold 17px system-ui, -apple-system, Segoe UI, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Planning horizon (years)', plot.x + plot.w/2, 26);
+    ctx.save();
+    ctx.translate(28, plot.y + plot.h/2);
+    ctx.rotate(-Math.PI/2);
+    ctx.fillText(p.view === 'capital' ? 'Required / current capital (€)' : 'Capital ÷ annual spending', 0, 0);
+    ctx.restore();
+
+    // Store transform for hover
+    draw.last = {plot, yMax, p, nToX, xToN, yToPix, pixToY, yToValue};
+  }
+
+  function compactEur(v) {
+    const abs = Math.abs(v);
+    if (abs >= 1000000) return '€' + fmtNum.format(v/1000000) + 'm';
+    if (abs >= 1000) return '€' + fmtNum.format(v/1000) + 'k';
+    return '€' + fmtNum.format(v);
+  }
+
+  function drawCurve(fn, color, width, dashed, nToX, yToPix, maxYears) {
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    if (dashed) ctx.setLineDash([8,6]);
+    ctx.beginPath();
+    for (let i=0; i<=600; i++) {
+      const n = maxYears - i/600*(maxYears-MIN_YEARS);
+      const x = nToX(n);
+      const y = yToPix(fn(n));
+      if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function planBalanceUnits(remainingYears, p) {
+    const elapsed = Math.max(0, Math.round(p.horizon - remainingYears));
+    const r = effectiveR(p);
+    const withdrawal = 1 / Math.max(0.05, 1 - p.withdrawTax);
+    let balance = currentUnits(p);
+    for (let i = 0; i < elapsed; i++) {
+      balance = Math.max(0, balance * (1 + r) - withdrawal);
+    }
+    return balance;
+  }
+
+  function drawPlanCurve(p, nToX, yToPix, yToValue) {
+    if (p.horizon < 1) return;
+    ctx.save();
+    ctx.strokeStyle = '#276c63';
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    const steps = Math.max(1, Math.round((p.horizon - MIN_YEARS) * 8));
+    for (let i = 0; i <= steps; i++) {
+      const n = p.horizon - i / steps * (p.horizon - MIN_YEARS);
+      const x = nToX(n);
+      const y = yToPix(yToValue(planBalanceUnits(n, p)));
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function updateReadouts() {
+    const p = params();
+    const units = currentUnits(p);
+    const upUnits = requiredUnits(p.horizon, p, true);
+    const loUnits = lowerUnits(p.horizon, p);
+    const z = zoneFor(units, p.horizon, p);
+    const neededCap = upUnits * p.spending;
+    const maxSpend = p.capital / Math.max(0.0001, upUnits);
+    const capitalMode = p.view === 'capital';
+    $('currentValueLabel').textContent = capitalMode ? 'Current capital' : 'Current spending units';
+    $('currentValueExplain').textContent = capitalMode ? 'savings available today' : 'capital ÷ annual spending';
+    $('unitsOut').textContent = capitalMode ? fmtEur.format(p.capital) : fmtNum.format(units) + '×';
+    $('zoneOut').innerHTML = `<span class="zonePill ${zoneClass(z)}">${zoneText(z)}</span>`;
+    $('zoneExplain').textContent = zoneMeaning(z) + ` at ${p.horizon} years`;
+    $('neededOut').textContent = fmtEur.format(neededCap);
+    $('neededUnitsOut').textContent = capitalMode
+      ? `${fmtEur.format(neededCap)} upper; lower boundary ${fmtEur.format(loUnits * p.spending)}`
+      : `${fmtNum.format(upUnits)} spending units; lower boundary ${fmtNum.format(loUnits)}×`;
+    $('safeSpendOut').textContent = fmtEur.format(maxSpend) + '/yr';
+    $('effReturnOut').textContent = 'effective real return ' + fmtPct.format(effectiveR(p)*100) + '%';
+    const floorGap = unitState.floorUnits - upUnits;
+    $('constraintNote').textContent = floorGap > 0
+      ? `At ${p.horizon} years, the chosen floor is above the funding estimate, so the target band collapses there.`
+      : `Linked controls: chart extent includes the ${p.horizon}-year plan; the floor is capped by the funding estimate when they meet.`;
+  }
+
+  function updateTable() {
+    const p = params();
+    const tbody = $('scenarioTable').querySelector('tbody');
+    const years = Array.from(new Set([MIN_YEARS, Math.max(MIN_YEARS, Math.round(p.horizon/2)), p.horizon, Math.min(p.maxYears, p.horizon+10), p.maxYears])).sort((a,b)=>b-a);
+    tbody.innerHTML = '';
+    for (const n of years) {
+      const req = requiredUnits(n, p, true);
+      const cap = req * p.spending;
+      const spend = p.capital / Math.max(0.0001, req);
+      const z = zoneFor(currentUnits(p), n, p);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${n} years</td><td>${fmtNum.format(req)}×</td><td>${fmtEur.format(cap)}</td><td>${fmtEur.format(spend)}/yr</td><td><span class="zonePill ${zoneClass(z)}">${zoneText(z)}</span></td>`;
+      tbody.appendChild(tr);
+    }
+  }
+
+  function update() {
+    syncUnitControls();
+    updateReadouts();
+    updateTable();
+    draw();
+  }
+
+  function setVals(obj) {
+    for (const [id, v] of Object.entries(obj)) {
+      if (unitConfig[id]) {
+        unitState[id] = clamp(Number(v), 0, unitConfig[id].max);
+      } else {
+        if ($(id)) $(id).value = v;
+        if ($(id+'N')) $(id+'N').value = v;
+      }
+    }
+    update();
+  }
+
+  $('imageDefaults').addEventListener('click', () => setVals({
+    capital:1000000, spending:20000, horizon:42, maxYears:42, realReturn:0, returnTax:0, withdrawTax:0, buffer:19, floorUnits:13, legacyUnits:0
+  }));
+  $('conservativeDefaults').addEventListener('click', () => setVals({
+    realReturn:1.5, returnTax:15, withdrawTax:0, buffer:30, floorUnits:15, legacyUnits:0
+  }));
+  $('growthDefaults').addEventListener('click', () => setVals({
+    realReturn:3.5, returnTax:15, withdrawTax:0, buffer:20, floorUnits:10, legacyUnits:100000
+  }));
+
+  canvas.addEventListener('mousemove', e => {
+    const d = draw.last;
+    if (!d) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * canvas.width / rect.width;
+    const y = (e.clientY - rect.top) * canvas.height / rect.height;
+    if (x < d.plot.x || x > d.plot.x+d.plot.w || y < d.plot.y || y > d.plot.y+d.plot.h) {
+      draw(); return;
+    }
+    draw();
+    const n = Math.max(1, Math.min(d.p.maxYears, Math.round(d.xToN(x))));
+    const upper = requiredUnits(n, d.p, true);
+    const lower = lowerUnits(n, d.p);
+    const yVal = d.pixToY(y);
+    const yUnits = d.p.view === 'capital' ? yVal / d.p.spending : yVal;
+    const z = zoneFor(yUnits, n, d.p);
+
+    const boxW = 320, boxH = 128;
+    let bx = Math.min(x + 16, canvas.width - boxW - 8);
+    let by = Math.max(8, y - boxH - 12);
+    ctx.save();
+    ctx.fillStyle = 'rgba(15,17,21,.94)';
+    ctx.strokeStyle = 'rgba(255,255,255,.18)';
+    ctx.lineWidth = 1;
+    ctx.fillRect(bx, by, boxW, boxH);
+    ctx.strokeRect(bx, by, boxW, boxH);
+    ctx.fillStyle = '#eef2f8';
+    ctx.font = '14px system-ui, -apple-system, Segoe UI, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(`${n} years · ${zoneText(z)}`, bx+12, by+22);
+    ctx.fillStyle = '#aab3c2';
+    ctx.fillText(`Upper: ${fmtNum.format(upper)}× = ${fmtEur.format(upper*d.p.spending)}`, bx+12, by+48);
+    ctx.fillText(`Lower: ${fmtNum.format(lower)}× = ${fmtEur.format(lower*d.p.spending)}`, bx+12, by+70);
+    const projected = planBalanceUnits(n, d.p);
+    ctx.fillText(`Plan path: ${fmtNum.format(projected)}× = ${fmtEur.format(projected*d.p.spending)}`, bx+12, by+92);
+    ctx.fillText(`Max net spend: ${fmtEur.format(d.p.capital/Math.max(0.0001, upper))}/yr`, bx+12, by+114);
+    ctx.restore();
+  });
+  canvas.addEventListener('mouseleave', update);
+
+  update();
+})();
+</script>
+</body>
+</html>
+
